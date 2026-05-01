@@ -7,9 +7,10 @@
     <h1>Patient Records</h1>
 
     <form method="POST" action="/add-patient">
-        <input type="text" name="first_name" placeholder="First name">
-        <input type="text" name="last_name" placeholder="Last name">
-        <input type="date" name="dob">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="text" name="first_name" placeholder="First name" required>
+        <input type="text" name="last_name" placeholder="Last name" required>
+        <input type="date" name="dob" required>
         <button type="submit">Add Patient</button>
     </form>
 
