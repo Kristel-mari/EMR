@@ -1,21 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Secure EMR Login</title>
+    <title>Dashboard</title>
 </head>
 <body>
-    <h1>Secure EMR Login</h1>
+    <h1>Welcome, {{ session.username }}</h1>
+    <p>Role: {{ session.role }}</p>
 
-    <form method="POST">
-        <label>Username</label><br>
-        <input type="text" name="username"><br><br>
-
-        <label>Password</label><br>
-        <input type="password" name="password"><br><br>
-
-        <button type="submit">Login</button>
-    </form>
-
-    <p style="color:red;">{{ error }}</p>
+    <ul>
+        <li><a href="/patients">View Patients</a></li>
+        <li><a href="/logout">Logout</a></li>
+    </ul>
 </body>
 </html>
