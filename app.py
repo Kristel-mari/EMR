@@ -126,17 +126,44 @@ def dashboard():
 @app.route("/patients")
 @login_required
 def patients():
+    patient_id = request.args.get("patient_id", "").strip()
+    chart_number = request.args.get("chart_number", "").strip()
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, first_name, last_name, dob FROM patients")
+    query = "SELECT id, chart_number, first_name, last_name, dob FROM patients"
+    conditions = []
+    params = []
+
+    if patient_id:
+        conditions.append("id = ?")
+        params.append(patient_id)
+
+    if chart_number:
+        conditions.append("chart_number = ?")
+        params.append(chart_number)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    cursor.execute(query, params)
     patient_list = cursor.fetchall()
 
     conn.close()
 
-    log_action("Viewed patient list")
+    if patient_id or chart_number:
+        log_action(f"Searched patient list (patient_id={patient_id}, chart_number={chart_number})")
+    else:
+        log_action("Viewed patient list")
 
-    return render_template("patients.html", patients=patient_list)
+    return render_template(
+        "patients.html",
+        patients=patient_list,
+        patient_id=patient_id,
+        chart_number=chart_number,
+    )
+
 
 
 @app.route("/add-patient", methods=["POST"])
@@ -144,17 +171,20 @@ def patients():
 @role_required("admin")
 def add_patient():
     validate_csrf()
+    chart_number = request.form.get("chart_number", "").strip()
     first_name = request.form.get("first_name", "").strip()
     last_name = request.form.get("last_name", "").strip()
     dob = request.form.get("dob", "").strip()
 
-    if not first_name or not last_name or not dob:
+    if not chart_number or not first_name or not last_name or not dob:
         return redirect("/patients")
 
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
+        "INSERT INTO patients (chart_number, first_name, last_name, dob) VALUES (?, ?, ?, ?)",
+        (chart_number, first_name, last_name, dob),
         "INSERT INTO patients (first_name, last_name, dob) VALUES (?, ?, ?)",
         (first_name, last_name, dob),
     )
@@ -162,7 +192,7 @@ def add_patient():
     conn.commit()
     conn.close()
 
-    log_action(f"Added patient: {first_name} {last_name}")
+    log_action(f"Added patient: chart={chart_number}, name={first_name} {last_name}")
 
     return redirect("/patients")
 
