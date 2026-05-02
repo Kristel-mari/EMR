@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lab Results</title>
+</head>
+<body>
+    <h1>Lab Results</h1>
+
+    <form method="GET" action="/labs">
+        <label>Filter by Patient ID</label>
+        <input type="text" name="patient_id" value="{{ patient_id }}">
+        <button type="submit">Search</button>
+        <a href="/labs">Clear</a>
+    </form>
+
+    <table border="1" cellpadding="6" cellspacing="0">
+        <tr>
+            <th>Lab ID</th>
+            <th>Patient ID</th>
+            <th>Test Name</th>
+            <th>Result</th>
+            <th>Unit</th>
+            <th>Date</th>
+        </tr>
+        {% for lab in labs %}
+        <tr>
+            <td>{{ lab[0] }}</td>
+            <td>{{ lab[1] }}</td>
+            <td>{{ lab[2] }}</td>
+            <td>{{ lab[3] }}</td>
+            <td>{{ lab[4] }}</td>
+            <td>{{ lab[5] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <a href="/dashboard">Back to Dashboard</a>
+</body>
+</html>

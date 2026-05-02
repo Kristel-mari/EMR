@@ -125,6 +125,35 @@ def dashboard():
     return render_template("dashboard.html")
 
 
+@app.route("/labs")
+@login_required
+def labs():
+    patient_id = request.args.get("patient_id", "").strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = "SELECT id, patient_id, test_name, result_value, result_unit, result_date FROM labs"
+    params = []
+
+    if patient_id:
+        query += " WHERE patient_id = ?"
+        params.append(patient_id)
+
+    query += " ORDER BY result_date DESC"
+
+    cursor.execute(query, params)
+    lab_results = cursor.fetchall()
+    conn.close()
+
+    if patient_id:
+        log_action(f"Viewed labs for patient_id={patient_id}")
+    else:
+        log_action("Viewed all labs")
+
+    return render_template("labs.html", labs=lab_results, patient_id=patient_id)
+
+
 @app.route("/patients")
 @login_required
 def patients():
