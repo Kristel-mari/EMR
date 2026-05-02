@@ -165,6 +165,7 @@ def patients():
     )
 
 
+
 @app.route("/add-patient", methods=["POST"])
 @login_required
 @role_required("admin")
@@ -184,6 +185,8 @@ def add_patient():
     cursor.execute(
         "INSERT INTO patients (chart_number, first_name, last_name, dob) VALUES (?, ?, ?, ?)",
         (chart_number, first_name, last_name, dob),
+        "INSERT INTO patients (first_name, last_name, dob) VALUES (?, ?, ?)",
+        (first_name, last_name, dob),
     )
 
     conn.commit()
