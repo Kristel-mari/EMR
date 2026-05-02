@@ -24,7 +24,7 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chart_number TEXT,
+            chart_number TEXT UNIQUE,
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
             dob TEXT NOT NULL
@@ -37,6 +37,7 @@ def init_db():
         cursor.execute("ALTER TABLE patients ADD COLUMN chart_number TEXT")
 
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_chart_number ON patients(chart_number)")
+        cursor.execute("ALTER TABLE patients ADD COLUMN chart_number TEXT UNIQUE")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS audit_log (

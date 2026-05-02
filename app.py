@@ -167,6 +167,8 @@ def patients():
         chart_number=chart_number,
         error=error,
     )
+   
+
 
 
 @app.route("/add-patient", methods=["POST"])
