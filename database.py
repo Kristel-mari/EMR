@@ -34,6 +34,9 @@ def init_db():
     cursor.execute("PRAGMA table_info(patients)")
     patient_columns = [row[1] for row in cursor.fetchall()]
     if "chart_number" not in patient_columns:
+        cursor.execute("ALTER TABLE patients ADD COLUMN chart_number TEXT")
+
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_chart_number ON patients(chart_number)")
         cursor.execute("ALTER TABLE patients ADD COLUMN chart_number TEXT UNIQUE")
 
     cursor.execute("""

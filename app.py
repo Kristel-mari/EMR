@@ -6,6 +6,8 @@ from functools import wraps
 from flask import Flask, abort, redirect, render_template, request, session
 from werkzeug.security import check_password_hash
 
+import sqlite3
+
 from database import get_connection, init_db
 
 app = Flask(__name__)
@@ -128,6 +130,7 @@ def dashboard():
 def patients():
     patient_id = request.args.get("patient_id", "").strip()
     chart_number = request.args.get("chart_number", "").strip()
+    error = request.args.get("error", "").strip()
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -162,7 +165,9 @@ def patients():
         patients=patient_list,
         patient_id=patient_id,
         chart_number=chart_number,
+        error=error,
     )
+   
 
 
 
@@ -182,14 +187,16 @@ def add_patient():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "INSERT INTO patients (chart_number, first_name, last_name, dob) VALUES (?, ?, ?, ?)",
-        (chart_number, first_name, last_name, dob),
-        "INSERT INTO patients (first_name, last_name, dob) VALUES (?, ?, ?)",
-        (first_name, last_name, dob),
-    )
+    try:
+        cursor.execute(
+            "INSERT INTO patients (chart_number, first_name, last_name, dob) VALUES (?, ?, ?, ?)",
+            (chart_number, first_name, last_name, dob),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return redirect("/patients?error=Chart+number+already+exists")
 
-    conn.commit()
     conn.close()
 
     log_action(f"Added patient: chart={chart_number}, name={first_name} {last_name}")
