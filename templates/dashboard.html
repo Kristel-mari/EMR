@@ -2,15 +2,59 @@
 <html>
 <head>
     <title>Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f3f6fb; color: #1f2937; }
+        .container { max-width: 980px; margin: 32px auto; padding: 0 16px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .subtitle { color: #6b7280; margin-top: 4px; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+        .value { font-size: 28px; font-weight: bold; margin-top: 8px; }
+        .actions a { display: inline-block; margin-right: 10px; padding: 10px 14px; border-radius: 8px; text-decoration: none; }
+        .primary { background: #2563eb; color: white; }
+        .secondary { background: #0f766e; color: white; }
+        .danger { background: #b91c1c; color: white; }
+        .activity { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        li { margin-bottom: 8px; }
+    </style>
 </head>
 <body>
-    <h1>Welcome, {{ session.username }}</h1>
-    <p>Role: {{ session.role }}</p>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Welcome, {{ session.username }}</h1>
+                <p class="subtitle">Role: {{ session.role }}</p>
+            </div>
+        </div>
 
-    <ul>
-        <li><a href="/patients">View Patients</a></li>
-        <li><a href="/labs">View Labs</a></li>
-        <li><a href="/logout">Logout</a></li>
-    </ul>
+        <div class="cards">
+            <div class="card">
+                <div class="label">Total Patients</div>
+                <div class="value">{{ patient_count }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Total Lab Results</div>
+                <div class="value">{{ lab_count }}</div>
+            </div>
+        </div>
+
+        <div class="actions" style="margin-bottom: 20px;">
+            <a class="primary" href="/patients">View Patients</a>
+            <a class="secondary" href="/labs">View Labs</a>
+            <a class="danger" href="/logout">Logout</a>
+        </div>
+
+        <div class="activity">
+            <h3>Recent Activity</h3>
+            <ul>
+                {% for item in recent_activity %}
+                <li>{{ item[0] }} — {{ item[1] }}</li>
+                {% else %}
+                <li>No recent activity found.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
 </body>
 </html>
