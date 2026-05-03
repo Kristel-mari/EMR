@@ -122,7 +122,58 @@ def login():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html")
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM patients")
+    patient_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM labs")
+    lab_count = cursor.fetchone()[0]
+
+    cursor.execute(
+        "SELECT timestamp, action FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 5",
+        (session["user_id"],),
+    )
+    recent_activity = cursor.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "dashboard.html",
+        patient_count=patient_count,
+        lab_count=lab_count,
+        recent_activity=recent_activity,
+    )
+
+
+@app.route("/labs")
+@login_required
+def labs():
+    patient_id = request.args.get("patient_id", "").strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = "SELECT id, patient_id, test_name, result_value, result_unit, result_date FROM labs"
+    params = []
+
+    if patient_id:
+        query += " WHERE patient_id = ?"
+        params.append(patient_id)
+
+    query += " ORDER BY result_date DESC"
+
+    cursor.execute(query, params)
+    lab_results = cursor.fetchall()
+    conn.close()
+
+    if patient_id:
+        log_action(f"Viewed labs for patient_id={patient_id}")
+    else:
+        log_action("Viewed all labs")
+
+    return render_template("labs.html", labs=lab_results, patient_id=patient_id)
 
 
 @app.route("/patients")
