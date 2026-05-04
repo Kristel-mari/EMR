@@ -84,6 +84,7 @@ def init_db():
             FOREIGN KEY (patient_id) REFERENCES patients(id)
         )
     """)
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
