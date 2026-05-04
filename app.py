@@ -1,121 +1,412 @@
-from flask import Flask, render_template, request, redirect, session
-from werkzeug.security import check_password_hash
+import os
+import secrets
+import sqlite3
 from datetime import datetime
-from database import init_db, get_connection
+from functools import wraps
 
-app = Flask(__name__)
-app.secret_key = "change-this-secret-key"
+from flask import Flask, abort, redirect, render_template, request, session
+from werkzeug.security import check_password_hash
 
-init_db()
+from database import get_connection, init_db
 
-def log_action(action):
-    if "user_id" not in session:
-        return
 
-    conn = get_connection()
-    cursor = conn.cursor()
+class EMRApplication:
+    def __init__(self):
+        self.app = Flask(__name__)
+        self.app.secret_key = os.environ.get("EMR_SECRET_KEY", secrets.token_hex(32))
 
-    cursor.execute(
-        "INSERT INTO audit_log (user_id, action, timestamp) VALUES (?, ?, ?)",
-        (session["user_id"], action, datetime.now().isoformat())
-    )
+        self.app.config.update(
+            SESSION_COOKIE_HTTPONLY=True,
+            SESSION_COOKIE_SAMESITE="Lax",
+            SESSION_COOKIE_SECURE=os.environ.get("EMR_SECURE_COOKIE", "0") == "1",
+        )
 
-    conn.commit()
-    conn.close()
+        init_db()
+        self.register_hooks()
+        self.register_routes()
 
-def login_required(route_function):
-    def wrapper(*args, **kwargs):
+    def log_action(self, action):
         if "user_id" not in session:
-            return redirect("/login")
-        return route_function(*args, **kwargs)
-
-    wrapper.__name__ = route_function.__name__
-    return wrapper
-
-@app.route("/")
-def home():
-    return redirect("/login")
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    error = ""
-
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+            return
 
         conn = get_connection()
         cursor = conn.cursor()
-
         cursor.execute(
-            "SELECT id, username, password_hash, role FROM users WHERE username = ?",
-            (username,)
+            "INSERT INTO audit_log (user_id, action, timestamp) VALUES (?, ?, ?)",
+            (session["user_id"], action, datetime.utcnow().isoformat()),
         )
-        user = cursor.fetchone()
+        conn.commit()
         conn.close()
 
-        if user and check_password_hash(user[2], password):
-            session["user_id"] = user[0]
-            session["username"] = user[1]
-            session["role"] = user[3]
-            log_action("User logged in")
-            return redirect("/dashboard")
-        else:
-            error = "Invalid username or password."
+    def ensure_csrf_token(self):
+        if "csrf_token" not in session:
+            session["csrf_token"] = secrets.token_urlsafe(24)
 
-    return render_template("login.html", error=error)
+    def validate_csrf(self):
+        self.ensure_csrf_token()
+        submitted = request.form.get("csrf_token", "")
 
-@app.route("/dashboard")
-@login_required
-def dashboard():
-    return render_template("dashboard.html")
+        if not submitted or submitted != session.get("csrf_token"):
+            abort(400)
 
-@app.route("/patients")
-@login_required
-def patients():
-    conn = get_connection()
-    cursor = conn.cursor()
+    def login_required(self, route_function):
+        @wraps(route_function)
+        def wrapper(*args, **kwargs):
+            if "user_id" not in session:
+                return redirect("/login")
+            return route_function(*args, **kwargs)
 
-    cursor.execute("SELECT id, first_name, last_name, dob FROM patients")
-    patient_list = cursor.fetchall()
+        return wrapper
 
-    conn.close()
+    def role_required(self, required_role):
+        def decorator(route_function):
+            @wraps(route_function)
+            def wrapper(*args, **kwargs):
+                if session.get("role") != required_role:
+                    abort(403)
+                return route_function(*args, **kwargs)
 
-    log_action("Viewed patient list")
+            return wrapper
 
-    return render_template("patients.html", patients=patient_list)
+        return decorator
 
-@app.route("/add-patient", methods=["POST"])
-@login_required
-def add_patient():
-    first_name = request.form.get("first_name", "").strip()
-    last_name = request.form.get("last_name", "").strip()
-    dob = request.form.get("dob", "").strip()
+    def register_hooks(self):
+        @self.app.before_request
+        def set_csrf_token():
+            self.ensure_csrf_token()
 
-    if not first_name or not last_name or not dob:
-        return redirect("/patients")
+        @self.app.context_processor
+        def inject_csrf_token():
+            return {"csrf_token": session.get("csrf_token", "")}
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    def register_routes(self):
+        @self.app.route("/")
+        def home():
+            return redirect("/login")
 
-    cursor.execute(
-        "INSERT INTO patients (first_name, last_name, dob) VALUES (?, ?, ?)",
-        (first_name, last_name, dob)
-    )
+        @self.app.route("/login", methods=["GET", "POST"])
+        def login():
+            error = ""
 
-    conn.commit()
-    conn.close()
+            if request.method == "POST":
+                self.validate_csrf()
 
-    log_action(f"Added patient: {first_name} {last_name}")
+                username = request.form.get("username", "").strip()
+                password = request.form.get("password", "")
 
-    return redirect("/patients")
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, username, password_hash, role FROM users WHERE username = ?",
+                    (username,),
+                )
+                user = cursor.fetchone()
+                conn.close()
 
-@app.route("/logout")
-@login_required
-def logout():
-    log_action("User logged out")
-    session.clear()
-    return redirect("/login")
+                if user and check_password_hash(user[2], password):
+                    session.clear()
+                    session["user_id"] = user[0]
+                    session["username"] = user[1]
+                    session["role"] = user[3]
+                    self.ensure_csrf_token()
+                    self.log_action("User logged in")
+                    return redirect("/dashboard")
+
+                error = "Invalid username or password."
+
+            self.ensure_csrf_token()
+
+            return render_template(
+                "login.html",
+                error=error,
+                csrf_token=session.get("csrf_token")
+            )
+
+        @self.app.route("/dashboard")
+        @self.login_required
+        def dashboard():
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT COUNT(*) FROM patients")
+            patient_count = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM labs")
+            lab_count = cursor.fetchone()[0]
+
+            cursor.execute(
+                "SELECT timestamp, action FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 5",
+                (session["user_id"],),
+            )
+            recent_activity = cursor.fetchall()
+
+            conn.close()
+
+            return render_template(
+                "dashboard.html",
+                patient_count=patient_count,
+                lab_count=lab_count,
+                recent_activity=recent_activity,
+            )
+
+        @self.app.route("/patients")
+        @self.login_required
+        def patients():
+            patient_id = request.args.get("patient_id", "").strip()
+            chart_number = request.args.get("chart_number", "").strip()
+            error = request.args.get("error", "").strip()
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            query = "SELECT id, chart_number, first_name, last_name, dob FROM patients"
+            conditions = []
+            params = []
+
+            if patient_id:
+                conditions.append("id = ?")
+                params.append(patient_id)
+
+            if chart_number:
+                conditions.append("chart_number = ?")
+                params.append(chart_number)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            cursor.execute(query, params)
+            patient_list = cursor.fetchall()
+            conn.close()
+
+            if patient_id or chart_number:
+                self.log_action(
+                    f"Searched patient list patient_id={patient_id}, chart_number={chart_number}"
+                )
+            else:
+                self.log_action("Viewed patient list")
+
+            return render_template(
+                "patients.html",
+                patients=patient_list,
+                patient_id=patient_id,
+                chart_number=chart_number,
+                error=error,
+            )
+        
+        @self.app.route("/add-vitals/<int:patient_id>", methods=["POST"])
+        @self.login_required
+        @self.role_required("admin")
+        def add_vitals(patient_id):
+            self.validate_csrf()
+
+            height_inches = float(request.form.get("height_inches", 0))
+            weight_lbs = float(request.form.get("weight_lbs", 0))
+            recorded_date = request.form.get("recorded_date", "").strip()
+
+            if height_inches <= 0 or weight_lbs <= 0 or not recorded_date:
+                return redirect(f"/patient/{patient_id}")
+
+            bmi = round((weight_lbs / (height_inches * height_inches)) * 703, 1)
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO vitals (patient_id, height_inches, weight_lbs, bmi, recorded_date)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (patient_id, height_inches, weight_lbs, bmi, recorded_date),
+            )
+
+            conn.commit()
+            conn.close()
+
+            self.log_action(f"Added vitals for patient_id={patient_id}")
+
+            return redirect(f"/patient/{patient_id}")
+        
+
+        @self.app.route("/patient/<int:patient_id>")
+        @self.login_required
+        def patient_profile(patient_id):
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "SELECT id, chart_number, first_name, last_name, dob FROM patients WHERE id = ?",
+                (patient_id,),
+            )
+            patient = cursor.fetchone()
+
+            if not patient:
+                conn.close()
+                return redirect("/patients?error=Patient+not+found")
+
+            cursor.execute(
+                "SELECT test_name, result_value, result_unit, result_date FROM labs WHERE patient_id = ? ORDER BY result_date",
+                (patient_id,),
+            )
+            labs = cursor.fetchall()
+
+            cursor.execute(
+                """
+                SELECT height_inches, weight_lbs, bmi, recorded_date
+                FROM vitals
+                WHERE patient_id = ?
+                ORDER BY recorded_date
+                """,
+                (patient_id,),
+            )
+            vitals = cursor.fetchall()
+
+            cursor.execute(
+                "SELECT medication_name, dose, start_date, end_date, status FROM medications WHERE patient_id = ? ORDER BY start_date DESC",
+                (patient_id,),
+            )
+            medications = cursor.fetchall()
+
+            conn.close()
+
+            self.log_action(f"Viewed patient profile patient_id={patient_id}")
+
+            return render_template(
+                "patient_profile.html",
+                patient=patient,
+                labs=labs,
+                vitals=vitals,
+                medications=medications,
+            )
+        
+        
+
+        @self.app.route("/add-patient", methods=["POST"])
+        @self.login_required
+        @self.role_required("admin")
+        def add_patient():
+            self.validate_csrf()
+
+            chart_number = request.form.get("chart_number", "").strip()
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            dob = request.form.get("dob", "").strip()
+
+            if not chart_number or not first_name or not last_name or not dob:
+                return redirect("/patients?error=All+fields+are+required")
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO patients (chart_number, first_name, last_name, dob)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (chart_number, first_name, last_name, dob),
+                )
+                conn.commit()
+
+            except sqlite3.IntegrityError:
+                conn.close()
+                return redirect("/patients?error=Chart+number+already+exists")
+
+            conn.close()
+
+            self.log_action(
+                f"Added patient chart={chart_number}, name={first_name} {last_name}"
+            )
+
+            return redirect("/patients")
+
+        @self.app.route("/labs")
+        @self.login_required
+        def labs():
+            patient_id = request.args.get("patient_id", "").strip()
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                SELECT id, patient_id, test_name, result_value, result_unit, result_date
+                FROM labs
+            """
+            params = []
+
+            if patient_id:
+                query += " WHERE patient_id = ?"
+                params.append(patient_id)
+
+            query += " ORDER BY result_date DESC"
+
+            cursor.execute(query, params)
+            lab_results = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT height_inches, weight_lbs, bmi, recorded_date
+                FROM vitals
+                WHERE patient_id = ?
+                ORDER BY recorded_date
+                """,
+                (patient_id,),
+            )
+            vitals = cursor.fetchall()
+            conn.close()
+
+            if patient_id:
+                self.log_action(f"Viewed labs for patient_id={patient_id}")
+            else:
+                self.log_action("Viewed all labs")
+
+            return render_template(
+                "labs.html",
+                labs=lab_results,
+                patient_id=patient_id,
+            )
+        
+        @self.app.route("/add-lab/<int:patient_id>", methods=["POST"])
+        @self.login_required
+        @self.role_required("admin")
+        def add_lab(patient_id):
+            self.validate_csrf()
+
+            test_name = request.form.get("test_name", "").strip()
+            result_value = request.form.get("result_value", "").strip()
+            result_unit = request.form.get("result_unit", "").strip()
+            result_date = request.form.get("result_date", "").strip()
+
+            if not test_name or not result_value or not result_date:
+                return redirect(f"/patient/{patient_id}")
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO labs (patient_id, test_name, result_value, result_unit, result_date)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (patient_id, test_name, result_value, result_unit, result_date),
+            )
+
+            conn.commit()
+            conn.close()
+
+            self.log_action(f"Added lab result for patient_id={patient_id}: {test_name}")
+
+            return redirect(f"/patient/{patient_id}")
+
+        @self.app.route("/logout")
+        @self.login_required
+        def logout():
+            self.log_action("User logged out")
+            session.clear()
+            return redirect("/login")
+
+
+emr_application = EMRApplication()
+app = emr_application.app
+
 
 if __name__ == "__main__":
     app.run(debug=True)

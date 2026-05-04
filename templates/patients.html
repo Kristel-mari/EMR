@@ -6,20 +6,34 @@
 <body>
     <h1>Patient Records</h1>
 
+    <form method="GET" action="/patients">
+        <input type="text" name="patient_id" placeholder="Lookup by ID #" value="{{ patient_id }}">
+        <input type="text" name="chart_number" placeholder="Lookup by Chart #" value="{{ chart_number }}">
+        <button type="submit">Search</button>
+        <a href="/patients">Clear</a>
+    </form>
+
+    <hr>
+
     <form method="POST" action="/add-patient">
-        <input type="text" name="first_name" placeholder="First name">
-        <input type="text" name="last_name" placeholder="Last name">
-        <input type="date" name="dob">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="text" name="chart_number" placeholder="Chart #" required>
+        <input type="text" name="first_name" placeholder="First name" required>
+        <input type="text" name="last_name" placeholder="Last name" required>
+        <input type="date" name="dob" required>
         <button type="submit">Add Patient</button>
     </form>
 
     <hr>
 
     {% for patient in patients %}
-        <p>
-            {{ patient[1] }} {{ patient[2] }} — DOB: {{ patient[3] }}
-        </p>
-    {% endfor %}
+    <p>
+        ID: {{ patient[0] }} | Chart: {{ patient[1] }} |
+        {{ patient[2] }} {{ patient[3] }} — DOB: {{ patient[4] }}
+
+        <a href="/patient/{{ patient[0] }}">View Profile</a>
+    </p>
+{% endfor %}
 
     <br>
     <a href="/dashboard">Back to Dashboard</a>

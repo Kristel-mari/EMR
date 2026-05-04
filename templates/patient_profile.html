@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient Profile</title>
+    
+</head>
+<body>
+
+<h1>Patient Profile</h1>
+
+<p><strong>Chart #:</strong> {{ patient[1] }}</p>
+<p><strong>Name:</strong> {{ patient[2] }} {{ patient[3] }}</p>
+<p><strong>DOB:</strong> {{ patient[4] }}</p>
+
+<hr>
+
+<h2>Lab Results</h2>
+
+<h3>Add Lab Result</h3>
+
+<form method="POST" action="/add-lab/{{ patient[0] }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <input type="text" name="test_name" placeholder="Test name" required>
+    <input type="number" step="0.01" name="result_value" placeholder="Result value" required>
+    <input type="text" name="result_unit" placeholder="Unit">
+    <input type="date" name="result_date" required>
+
+    <button type="submit">Add Lab</button>
+</form>
+
+{% if labs %}
+    <div id="chartsContainer"></div>
+
+    <ul>
+    {% for lab in labs %}
+        <li>
+            {{ lab[0] }}: {{ lab[1] }} {{ lab[2] }} — {{ lab[3] }}
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No lab results found.</p>
+{% endif %}
+
+
+
+
+<hr>
+
+<h2>Vitals / BMI</h2>
+
+<h3>Add Vitals</h3>
+
+<form method="POST" action="/add-vitals/{{ patient[0] }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <input type="number" step="0.1" name="height_inches" placeholder="Height in inches" required>
+    <input type="number" step="0.1" name="weight_lbs" placeholder="Weight in lbs" required>
+    <input type="date" name="recorded_date" required>
+
+    <button type="submit">Add Vitals</button>
+</form>
+
+{% if vitals %}
+    <h3>BMI / Weight History</h3>
+    <ul>
+    {% for vital in vitals %}
+        <li>
+            Height: {{ vital[0] }} in |
+            Weight: {{ vital[1] }} lbs |
+            BMI: {{ vital[2] }} |
+            Date: {{ vital[3] }}
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No vitals found.</p>
+{% endif %}
+
+<hr>
+
+<h2>Medications</h2>
+
+{% if medications %}
+    <ul>
+    {% for med in medications %}
+        <li>
+            {{ med[0] }} — {{ med[1] }} |
+            Start: {{ med[2] }} |
+            End: {{ med[3] }} |
+            Status: {{ med[4] }}
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No medications found.</p>
+{% endif %}
+
+<br>
+
+<a href="/patients">Back to Patients</a>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const labs = {{ labs | tojson | safe }};
+    const container = document.getElementById("chartsContainer");
+
+    if (labs.length > 0 && container) {
+        const groupedLabs = {};
+
+        labs.forEach(lab => {
+            const testName = lab[0];
+
+            if (!groupedLabs[testName]) {
+                groupedLabs[testName] = [];
+            }
+
+            groupedLabs[testName].push({
+                date: lab[3],
+                value: Number(lab[1])
+            });
+        });
+
+        Object.keys(groupedLabs).forEach(testName => {
+            const section = document.createElement("div");
+            section.style.marginBottom = "30px";
+
+            const title = document.createElement("h3");
+            title.textContent = testName + " Trend";
+
+            const canvas = document.createElement("canvas");
+
+            section.appendChild(title);
+            section.appendChild(canvas);
+            container.appendChild(section);
+
+            const labels = groupedLabs[testName].map(l => l.date);
+            const values = groupedLabs[testName].map(l => l.value);
+
+            new Chart(canvas, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: testName,
+                        data: values,
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                }
+            });
+        });
+    }
+</script>
+
+</body>
+</html>
