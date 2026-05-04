@@ -22,6 +22,18 @@ def init_db():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vitals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            height_inches REAL NOT NULL,
+            weight_lbs REAL NOT NULL,
+            bmi REAL NOT NULL,
+            recorded_date TEXT NOT NULL,
+            FOREIGN KEY (patient_id) REFERENCES patients(id)
+        )
+    """)
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS patients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             chart_number TEXT UNIQUE,
@@ -47,6 +59,29 @@ def init_db():
             result_unit TEXT,
             result_date TEXT NOT NULL,
             FOREIGN KEY(patient_id) REFERENCES patients(id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS medications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            medication_name TEXT NOT NULL,
+            dose TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            status TEXT,
+            FOREIGN KEY (patient_id) REFERENCES patients(id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vitals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            height REAL,
+            weight REAL,
+            bmi REAL,
+            recorded_date TEXT,
+            FOREIGN KEY (patient_id) REFERENCES patients(id)
         )
     """)
 

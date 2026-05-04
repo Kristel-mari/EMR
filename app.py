@@ -15,7 +15,14 @@ class EMRApplication:
         self.app = Flask(__name__)
         self.app.secret_key = os.environ.get("EMR_SECRET_KEY", secrets.token_hex(32))
 
+        self.app.config.update(
+            SESSION_COOKIE_HTTPONLY=True,
+            SESSION_COOKIE_SAMESITE="Lax",
+            SESSION_COOKIE_SECURE=os.environ.get("EMR_SECURE_COOKIE", "0") == "1",
+        )
+
         init_db()
+        self.register_hooks()
         self.register_routes()
 
     def log_action(self, action):
@@ -35,153 +42,10 @@ class EMRApplication:
         if "csrf_token" not in session:
             session["csrf_token"] = secrets.token_urlsafe(24)
 
-    def register_routes(self):
-
-        @self.app.route("/login", methods=["GET", "POST"])
-        def login():
-            error = ""
-
-            if request.method == "POST":
-                username = request.form.get("username", "").strip()
-                password = request.form.get("password", "")
-
-                conn = get_connection()
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT id, username, password_hash, role FROM users WHERE username = ?",
-                    (username,),
-                )
-                user = cursor.fetchone()
-                conn.close()
-
-                if user and check_password_hash(user[2], password):
-                    session.clear()
-                    session["user_id"] = user[0]
-                    session["username"] = user[1]
-                    session["role"] = user[3]
-                    self.ensure_csrf_token()
-                    self.log_action("User logged in")
-                    return redirect("/dashboard")
-
-                error = "Invalid username or password."
-
-            return render_template("login.html", error=error)
-
-
-@app.route("/dashboard")
-@login_required
-def dashboard():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM patients")
-    patient_count = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM labs")
-    lab_count = cursor.fetchone()[0]
-
-    cursor.execute(
-        "SELECT timestamp, action FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 5",
-        (session["user_id"],),
-    )
-    recent_activity = cursor.fetchall()
-
-    conn.close()
-
-    return render_template(
-        "dashboard.html",
-        patient_count=patient_count,
-        lab_count=lab_count,
-        recent_activity=recent_activity,
-    )
-
-
-@app.route("/labs")
-@login_required
-def labs():
-    patient_id = request.args.get("patient_id", "").strip()
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    query = "SELECT id, patient_id, test_name, result_value, result_unit, result_date FROM labs"
-    params = []
-
-    if patient_id:
-        query += " WHERE patient_id = ?"
-        params.append(patient_id)
-
-    query += " ORDER BY result_date DESC"
-
-    cursor.execute(query, params)
-    lab_results = cursor.fetchall()
-    conn.close()
-
-    if patient_id:
-        log_action(f"Viewed labs for patient_id={patient_id}")
-    else:
-        log_action("Viewed all labs")
-
-    return render_template("labs.html", labs=lab_results, patient_id=patient_id)
-
-
-@app.route("/labs")
-@login_required
-def labs():
-    patient_id = request.args.get("patient_id", "").strip()
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    query = "SELECT id, patient_id, test_name, result_value, result_unit, result_date FROM labs"
-    params = []
-
-    if patient_id:
-        query += " WHERE patient_id = ?"
-        params.append(patient_id)
-
-    query += " ORDER BY result_date DESC"
-
-    cursor.execute(query, params)
-    lab_results = cursor.fetchall()
-    conn.close()
-
-    if patient_id:
-        log_action(f"Viewed labs for patient_id={patient_id}")
-    else:
-        log_action("Viewed all labs")
-
-    return render_template("labs.html", labs=lab_results, patient_id=patient_id)
-
-
-@app.route("/patients")
-@login_required
-def patients():
-    patient_id = request.args.get("patient_id", "").strip()
-    chart_number = request.args.get("chart_number", "").strip()
-    error = request.args.get("error", "").strip()
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    query = "SELECT id, chart_number, first_name, last_name, dob FROM patients"
-    conditions = []
-    params = []
-
-    if patient_id:
-        conditions.append("id = ?")
-        params.append(patient_id)
-
-    if chart_number:
-        conditions.append("chart_number = ?")
-        params.append(chart_number)
-
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
-
     def validate_csrf(self):
         self.ensure_csrf_token()
         submitted = request.form.get("csrf_token", "")
+
         if not submitted or submitted != session.get("csrf_token"):
             abort(400)
 
@@ -223,8 +87,10 @@ def patients():
         @self.app.route("/login", methods=["GET", "POST"])
         def login():
             error = ""
+
             if request.method == "POST":
                 self.validate_csrf()
+
                 username = request.form.get("username", "").strip()
                 password = request.form.get("password", "")
 
@@ -245,9 +111,16 @@ def patients():
                     self.ensure_csrf_token()
                     self.log_action("User logged in")
                     return redirect("/dashboard")
+
                 error = "Invalid username or password."
 
-            return render_template("login.html", error=error)
+            self.ensure_csrf_token()
+
+            return render_template(
+                "login.html",
+                error=error,
+                csrf_token=session.get("csrf_token")
+            )
 
         @self.app.route("/dashboard")
         @self.login_required
@@ -266,6 +139,7 @@ def patients():
                 (session["user_id"],),
             )
             recent_activity = cursor.fetchall()
+
             conn.close()
 
             return render_template(
@@ -274,31 +148,6 @@ def patients():
                 lab_count=lab_count,
                 recent_activity=recent_activity,
             )
-
-        @self.app.route("/labs")
-        @self.login_required
-        def labs():
-            patient_id = request.args.get("patient_id", "").strip()
-            conn = get_connection()
-            cursor = conn.cursor()
-
-            query = "SELECT id, patient_id, test_name, result_value, result_unit, result_date FROM labs"
-            params = []
-            if patient_id:
-                query += " WHERE patient_id = ?"
-                params.append(patient_id)
-            query += " ORDER BY result_date DESC"
-
-            cursor.execute(query, params)
-            lab_results = cursor.fetchall()
-            conn.close()
-
-            if patient_id:
-                self.log_action(f"Viewed labs for patient_id={patient_id}")
-            else:
-                self.log_action("Viewed all labs")
-
-            return render_template("labs.html", labs=lab_results, patient_id=patient_id)
 
         @self.app.route("/patients")
         @self.login_required
@@ -331,7 +180,7 @@ def patients():
 
             if patient_id or chart_number:
                 self.log_action(
-                    f"Searched patient list (patient_id={patient_id}, chart_number={chart_number})"
+                    f"Searched patient list patient_id={patient_id}, chart_number={chart_number}"
                 )
             else:
                 self.log_action("Viewed patient list")
@@ -343,35 +192,209 @@ def patients():
                 chart_number=chart_number,
                 error=error,
             )
+        
+        @self.app.route("/add-vitals/<int:patient_id>", methods=["POST"])
+        @self.login_required
+        @self.role_required("admin")
+        def add_vitals(patient_id):
+            self.validate_csrf()
+
+            height_inches = float(request.form.get("height_inches", 0))
+            weight_lbs = float(request.form.get("weight_lbs", 0))
+            recorded_date = request.form.get("recorded_date", "").strip()
+
+            if height_inches <= 0 or weight_lbs <= 0 or not recorded_date:
+                return redirect(f"/patient/{patient_id}")
+
+            bmi = round((weight_lbs / (height_inches * height_inches)) * 703, 1)
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO vitals (patient_id, height_inches, weight_lbs, bmi, recorded_date)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (patient_id, height_inches, weight_lbs, bmi, recorded_date),
+            )
+
+            conn.commit()
+            conn.close()
+
+            self.log_action(f"Added vitals for patient_id={patient_id}")
+
+            return redirect(f"/patient/{patient_id}")
+        
+
+        @self.app.route("/patient/<int:patient_id>")
+        @self.login_required
+        def patient_profile(patient_id):
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "SELECT id, chart_number, first_name, last_name, dob FROM patients WHERE id = ?",
+                (patient_id,),
+            )
+            patient = cursor.fetchone()
+
+            if not patient:
+                conn.close()
+                return redirect("/patients?error=Patient+not+found")
+
+            cursor.execute(
+                "SELECT test_name, result_value, result_unit, result_date FROM labs WHERE patient_id = ? ORDER BY result_date",
+                (patient_id,),
+            )
+            labs = cursor.fetchall()
+
+            cursor.execute(
+                """
+                SELECT height_inches, weight_lbs, bmi, recorded_date
+                FROM vitals
+                WHERE patient_id = ?
+                ORDER BY recorded_date
+                """,
+                (patient_id,),
+            )
+            vitals = cursor.fetchall()
+
+            cursor.execute(
+                "SELECT medication_name, dose, start_date, end_date, status FROM medications WHERE patient_id = ? ORDER BY start_date DESC",
+                (patient_id,),
+            )
+            medications = cursor.fetchall()
+
+            conn.close()
+
+            self.log_action(f"Viewed patient profile patient_id={patient_id}")
+
+            return render_template(
+                "patient_profile.html",
+                patient=patient,
+                labs=labs,
+                vitals=vitals,
+                medications=medications,
+            )
+        
+        
 
         @self.app.route("/add-patient", methods=["POST"])
         @self.login_required
         @self.role_required("admin")
         def add_patient():
             self.validate_csrf()
+
             chart_number = request.form.get("chart_number", "").strip()
             first_name = request.form.get("first_name", "").strip()
             last_name = request.form.get("last_name", "").strip()
             dob = request.form.get("dob", "").strip()
 
             if not chart_number or not first_name or not last_name or not dob:
-                return redirect("/patients")
+                return redirect("/patients?error=All+fields+are+required")
 
             conn = get_connection()
             cursor = conn.cursor()
+
             try:
                 cursor.execute(
-                    "INSERT INTO patients (chart_number, first_name, last_name, dob) VALUES (?, ?, ?, ?)",
+                    """
+                    INSERT INTO patients (chart_number, first_name, last_name, dob)
+                    VALUES (?, ?, ?, ?)
+                    """,
                     (chart_number, first_name, last_name, dob),
                 )
                 conn.commit()
+
             except sqlite3.IntegrityError:
                 conn.close()
                 return redirect("/patients?error=Chart+number+already+exists")
 
             conn.close()
-            self.log_action(f"Added patient: chart={chart_number}, name={first_name} {last_name}")
+
+            self.log_action(
+                f"Added patient chart={chart_number}, name={first_name} {last_name}"
+            )
+
             return redirect("/patients")
+
+        @self.app.route("/labs")
+        @self.login_required
+        def labs():
+            patient_id = request.args.get("patient_id", "").strip()
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                SELECT id, patient_id, test_name, result_value, result_unit, result_date
+                FROM labs
+            """
+            params = []
+
+            if patient_id:
+                query += " WHERE patient_id = ?"
+                params.append(patient_id)
+
+            query += " ORDER BY result_date DESC"
+
+            cursor.execute(query, params)
+            lab_results = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT height_inches, weight_lbs, bmi, recorded_date
+                FROM vitals
+                WHERE patient_id = ?
+                ORDER BY recorded_date
+                """,
+                (patient_id,),
+            )
+            vitals = cursor.fetchall()
+            conn.close()
+
+            if patient_id:
+                self.log_action(f"Viewed labs for patient_id={patient_id}")
+            else:
+                self.log_action("Viewed all labs")
+
+            return render_template(
+                "labs.html",
+                labs=lab_results,
+                patient_id=patient_id,
+            )
+        
+        @self.app.route("/add-lab/<int:patient_id>", methods=["POST"])
+        @self.login_required
+        @self.role_required("admin")
+        def add_lab(patient_id):
+            self.validate_csrf()
+
+            test_name = request.form.get("test_name", "").strip()
+            result_value = request.form.get("result_value", "").strip()
+            result_unit = request.form.get("result_unit", "").strip()
+            result_date = request.form.get("result_date", "").strip()
+
+            if not test_name or not result_value or not result_date:
+                return redirect(f"/patient/{patient_id}")
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO labs (patient_id, test_name, result_value, result_unit, result_date)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (patient_id, test_name, result_value, result_unit, result_date),
+            )
+
+            conn.commit()
+            conn.close()
+
+            self.log_action(f"Added lab result for patient_id={patient_id}: {test_name}")
+
+            return redirect(f"/patient/{patient_id}")
 
         @self.app.route("/logout")
         @self.login_required
@@ -386,4 +409,4 @@ app = emr_application.app
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)

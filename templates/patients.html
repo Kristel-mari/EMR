@@ -31,10 +31,13 @@
     <hr>
 
     {% for patient in patients %}
-        <p>
-            ID: {{ patient[0] }} | Chart: {{ patient[1] }} | {{ patient[2] }} {{ patient[3] }} — DOB: {{ patient[4] }}
-        </p>
-    {% endfor %}
+    <p>
+        ID: {{ patient[0] }} | Chart: {{ patient[1] }} |
+        {{ patient[2] }} {{ patient[3] }} — DOB: {{ patient[4] }}
+
+        <a href="/patient/{{ patient[0] }}">View Profile</a>
+    </p>
+{% endfor %}
 
     <br>
     <a href="/dashboard">Back to Dashboard</a>
