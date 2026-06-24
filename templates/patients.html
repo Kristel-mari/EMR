@@ -15,6 +15,10 @@
 
     <hr>
 
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
     <form method="POST" action="/add-patient">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="text" name="chart_number" placeholder="Chart #" required>
