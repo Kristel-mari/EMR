@@ -29,3 +29,5 @@ Default login:
 
 - Username: `admin`
 - Password: `Admin123!`
+
+AxonEMR is an educational portfolio project created for learning purposes. It is not affiliated with or endorsed by any existing company or trademark holder.
