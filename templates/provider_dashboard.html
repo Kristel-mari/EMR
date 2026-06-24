@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AxonEMR Provider Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #eef2f6; color: #111827; }
+    .shell { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: #173b5c; color: white; display: flex; flex-direction: column; }
+    .brand { display: flex; gap: 12px; align-items: center; padding: 24px; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .logo { width: 42px; height: 42px; border-radius: 10px; background: #406384; display: grid; place-items: center; font-size: 24px; }
+    .brand h2 { margin: 0; font-size: 18px; }
+    .brand p, .role span { margin: 0; color: #b7c8d9; font-size: 13px; }
+    .role { margin: 18px; padding: 16px; border-radius: 10px; background: #315779; }
+    .role strong { display: block; margin-top: 6px; }
+    nav { padding: 0 14px; display: flex; flex-direction: column; gap: 8px; }
+    nav a, .logout { color: #dce8f3; text-decoration: none; padding: 14px 16px; border-radius: 9px; font-weight: 600; }
+    nav a.active, nav a:hover { background: #4a6d8e; color: white; }
+    .logout { margin-top: auto; border-top: 1px solid rgba(255,255,255,.15); border-radius: 0; padding: 22px 28px; }
+
+    .main { flex: 1; }
+    .topbar { height: 72px; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
+    .search { width: 340px; padding: 13px 16px; border: 0; border-radius: 10px; background: #eef2f6; font-size: 15px; }
+    .user { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; background: #173b5c; color: white; display: grid; place-items: center; font-weight: bold; }
+    .user p { margin: 2px 0 0; color: #6b7280; }
+
+    .header { background: white; padding: 20px 28px; border-bottom: 1px solid #e5e7eb; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .content { padding: 28px; }
+
+    .alert { background: #fff1f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 16px 20px; border-radius: 12px; margin-bottom: 26px; }
+    .alert a { float: right; color: #b91c1c; font-weight: bold; text-decoration: none; }
+
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 26px; }
+    .card, .panel { background: white; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .card { padding: 24px; }
+    .card span { text-transform: uppercase; letter-spacing: 1px; color: #6b7280; font-size: 13px; }
+    .card h2 { font-size: 36px; margin: 18px 0 8px; }
+    .card p { margin: 0; color: #6b7280; }
+
+    .panel { margin-bottom: 26px; overflow: hidden; }
+    .panel-title { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px; }
+    .panel h2 { margin: 0; }
+    .btn { background: #173b5c; color: white; padding: 10px 16px; border-radius: 9px; text-decoration: none; font-weight: bold; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f3f4f6; color: #6b7280; text-align: left; padding: 14px 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    td { padding: 16px 18px; border-top: 1px solid #e5e7eb; }
+    td small { color: #6b7280; }
+
+    .badge { padding: 5px 10px; border-radius: 8px; font-weight: bold; font-size: 13px; }
+    .stable { background: #dcfce7; color: #047857; border: 1px solid #86efac; }
+    .critical { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+    .activity { padding: 0 24px 24px; }
+    .activity div { border-top: 1px solid #e5e7eb; padding: 12px 0; }
+    .activity small { color: #6b7280; display: block; }
+  </style>
+</head>
+
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">⌁</div>
+      <div>
+        <h2>AxonEMR</h2>
+        <p>v1.0</p>
+      </div>
+    </div>
+
+    <div class="role">
+      <span>ROLE</span>
+      <strong>MD / Provider</strong>
+    </div>
+
+    <nav>
+      <a class="active" href="/dashboard">⌂ Dashboard</a>
+      <a href="/patients">Patients</a>
+      <a href="#">Orders</a>
+      <a href="#">Schedule</a>
+      <a href="#">Notes</a>
+      <a href="/labs">Results</a>
+      <a href="#">Vitals</a>
+    </nav>
+
+    <a class="logout" href="/logout">↪ Sign Out</a>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <input class="search" placeholder="Search patients, orders, MRN...">
+      <div class="user">
+        <span>Provider Dashboard</span>
+        <div class="avatar">MD</div>
+        <div>
+          <strong>{{ session.username }}</strong>
+          <p>MD / Provider</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="header">
+      <h1>Clinical Dashboard</h1>
+    </section>
+
+    <section class="content">
+      <div class="alert">
+        <strong>Clinical Alerts:</strong> Review abnormal labs, unsigned notes, and pending orders.
+        <a href="#">View All</a>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <span>Census</span>
+          <h2>{{ patient_count }}</h2>
+          <p>Total patients in system</p>
+        </div>
+
+        <div class="card">
+          <span>Lab Results</span>
+          <h2>{{ lab_count }}</h2>
+          <p>Available lab records</p>
+        </div>
+
+        <div class="card">
+          <span>Pending Orders</span>
+          <h2>0</h2>
+          <p>No pending orders connected yet</p>
+        </div>
+
+        <div class="card">
+          <span>Unsigned Notes</span>
+          <h2>0</h2>
+          <p>No note module connected yet</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Active Patients</h2>
+          <a class="btn" href="/patients">+ Add Patient</a>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Chart Number</th>
+              <th>Patient</th>
+              <th>DOB</th>
+              <th>Room</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for patient in active_patients %}
+            <tr>
+              <td>{{ patient[1] }}</td>
+              <td>
+                <strong>{{ patient[2] }} {{ patient[3] }}</strong><br>
+                <small>Patient ID: {{ patient[0] }}</small>
+              </td>
+              <td>{{ patient[4] }}</td>
+              <td>Not assigned</td>
+              <td><span class="badge stable">Active</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5">No patients found. Add a patient from the Patients page.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+<div class="panel">
+    <div class="panel-title">
+        <h2>Recent Lab Results</h2>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Test</th>
+                <th>Result</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>No lab integration yet</td>
+                <td>--</td>
+                <td>--</td>
+                <td>Pending</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
