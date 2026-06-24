@@ -135,18 +135,60 @@ class EMRApplication:
             lab_count = cursor.fetchone()[0]
 
             cursor.execute(
-                "SELECT timestamp, action FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 5",
-                (session["user_id"],),
+                """
+                SELECT id, chart_number, first_name, last_name, dob
+                FROM patients
+                ORDER BY last_name, first_name
+                LIMIT 10
+                """
             )
-            recent_activity = cursor.fetchall()
+            active_patients = cursor.fetchall()
+
+            role = session.get("role")
+
+            if role == "it":
+                cursor.execute("SELECT COUNT(*) FROM users")
+                user_count = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COUNT(*) FROM audit_log")
+                audit_count = cursor.fetchone()[0]
+
+                cursor.execute(
+                    """
+                    SELECT timestamp, action
+                    FROM audit_log
+                    ORDER BY id DESC
+                    LIMIT 10
+                    """
+                )
+                recent_activity = cursor.fetchall()
+
+                conn.close()
+
+                return render_template(
+                    "it_dashboard.html",
+                    patient_count=patient_count,
+                    lab_count=lab_count,
+                    user_count=user_count,
+                    audit_count=audit_count,
+                    recent_activity=recent_activity,
+                )
 
             conn.close()
 
+            if role == "nurse":
+                return render_template(
+                    "nurse_dashboard.html",
+                    patient_count=patient_count,
+                    lab_count=lab_count,
+                    active_patients=active_patients,
+                )
+
             return render_template(
-                "dashboard.html",
+                "provider_dashboard.html",
                 patient_count=patient_count,
                 lab_count=lab_count,
-                recent_activity=recent_activity,
+                active_patients=active_patients,
             )
 
         @self.app.route("/patients")

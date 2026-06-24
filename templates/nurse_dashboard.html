@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AxonEMR Nursing Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #eef2f6; color: #111827; }
+    .shell { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: #066448; color: white; display: flex; flex-direction: column; }
+    .brand { display: flex; gap: 12px; align-items: center; padding: 24px; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .logo { width: 42px; height: 42px; border-radius: 10px; background: #237a61; display: grid; place-items: center; font-size: 24px; }
+    .brand h2 { margin: 0; font-size: 18px; }
+    .brand p, .role span { margin: 0; color: #b7d8cd; font-size: 13px; }
+    .role { margin: 18px; padding: 16px; border-radius: 10px; background: #237a61; }
+    .role strong { display: block; margin-top: 6px; }
+    nav { padding: 0 14px; display: flex; flex-direction: column; gap: 8px; }
+    nav a, .logout { color: #dcefe8; text-decoration: none; padding: 14px 16px; border-radius: 9px; font-weight: 600; }
+    nav a.active, nav a:hover { background: #3b8c75; color: white; }
+    .logout { margin-top: auto; border-top: 1px solid rgba(255,255,255,.15); border-radius: 0; padding: 22px 28px; }
+
+    .main { flex: 1; }
+    .topbar { height: 72px; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
+    .search { width: 340px; padding: 13px 16px; border: 0; border-radius: 10px; background: #eef2f6; font-size: 15px; }
+    .user { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; background: #066448; color: white; display: grid; place-items: center; font-weight: bold; }
+    .user p { margin: 2px 0 0; color: #6b7280; }
+
+    .header { background: white; padding: 20px 28px; border-bottom: 1px solid #e5e7eb; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .content { padding: 28px; }
+
+    .alert { background: #fffbeb; border: 1px solid #facc15; color: #a16207; padding: 16px 20px; border-radius: 12px; margin-bottom: 26px; }
+
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 26px; }
+    .card, .panel { background: white; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .card { padding: 24px; }
+    .card span { text-transform: uppercase; letter-spacing: 1px; color: #6b7280; font-size: 13px; }
+    .card h2 { font-size: 36px; margin: 18px 0 8px; }
+    .card p { margin: 0; color: #6b7280; }
+
+    .panel { margin-bottom: 26px; overflow: hidden; }
+    .panel h2 { margin: 0; padding: 22px 24px; }
+
+    .assignment {
+      display: grid;
+      grid-template-columns: 70px 1fr auto;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .room {
+      width: 54px;
+      height: 54px;
+      background: #066448;
+      color: white;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-weight: bold;
+    }
+
+    .patient strong { display: block; font-size: 17px; }
+    .patient small { color: #6b7280; }
+
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 13px;
+    }
+
+    .stats strong { color: #111827; }
+
+    .badge { padding: 5px 10px; border-radius: 8px; font-weight: bold; font-size: 13px; }
+    .low { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+    .given { background: #dcfce7; color: #047857; border: 1px solid #86efac; }
+    .due { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+
+    .task {
+      margin: 0 18px 10px;
+      padding: 14px 18px 14px 28px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: white;
+      position: relative;
+    }
+
+    .task::before {
+      content: "";
+      width: 6px;
+      height: 44px;
+      border-radius: 6px;
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      background: #94a3b8;
+    }
+
+    .task small { display: block; color: #6b7280; margin-top: 4px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f3f4f6; color: #6b7280; text-align: left; padding: 14px 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    td { padding: 16px 18px; border-top: 1px solid #e5e7eb; }
+  </style>
+</head>
+
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">⌁</div>
+      <div>
+        <h2>AxonEMR</h2>
+        <p>v1.0</p>
+      </div>
+    </div>
+
+    <div class="role">
+      <span>ROLE</span>
+      <strong>Nursing</strong>
+    </div>
+
+    <nav>
+      <a class="active" href="/dashboard">⌂ Dashboard</a>
+      <a href="/patients">My Patients</a>
+      <a href="#">Medications</a>
+      <a href="#">Vitals</a>
+      <a href="#">Care Tasks</a>
+      <a href="#">Handoff Notes</a>
+      <a href="#">Alerts</a>
+    </nav>
+
+    <a class="logout" href="/logout">↪ Sign Out</a>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <input class="search" placeholder="Search patients, orders, MRN...">
+      <div class="user">
+        <span>Nursing Dashboard</span>
+        <div class="avatar">RN</div>
+        <div>
+          <strong>{{ session.username }}</strong>
+          <p>Nursing</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="header">
+      <h1>Nursing Dashboard</h1>
+    </section>
+
+    <section class="content">
+      <div class="alert">
+        <strong>Shift Alert:</strong> Review vitals, medications, and assigned patient tasks.
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <span>My Patients</span>
+          <h2>{{ patient_count }}</h2>
+          <p>Patients currently listed</p>
+        </div>
+
+        <div class="card">
+          <span>Meds Due</span>
+          <h2>0</h2>
+          <p>Medication module not connected yet</p>
+        </div>
+
+        <div class="card">
+          <span>Tasks Pending</span>
+          <h2>0</h2>
+          <p>Care task module not connected yet</p>
+        </div>
+
+        <div class="card">
+          <span>Vitals Due</span>
+          <h2>0</h2>
+          <p>Vitals queue not connected yet</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Patient Assignments</h2>
+
+        {% for patient in active_patients %}
+        <div class="assignment">
+          <div class="room">--</div>
+
+          <div class="patient">
+            <strong>{{ patient[2] }} {{ patient[3] }}</strong>
+            <small>{{ patient[1] }} · DOB: {{ patient[4] }}</small>
+          </div>
+
+          <div class="stats">
+            <span><strong>0</strong><br>Meds</span>
+            <span><strong>0</strong><br>Tasks</span>
+            <span class="badge low">Low</span>
+            <span style="color:#059669;">Vitals<br>Not due</span>
+          </div>
+        </div>
+        {% else %}
+        <p style="padding: 20px;">No assigned patients found.</p>
+        {% endfor %}
+      </div>
+
+      <div class="panel">
+        <h2>Care Tasks</h2>
+
+        {% for patient in active_patients %}
+        <div class="task">
+          <strong>Routine patient check</strong>
+          <small>{{ patient[2] }} {{ patient[3] }} · Not scheduled</small>
+        </div>
+        {% else %}
+        <p style="padding: 20px;">No care tasks available.</p>
+        {% endfor %}
+      </div>
+
+      <div class="panel">
+        <h2>Medication Administration Record (MAR)</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Patient</th>
+              <th>Medication</th>
+              <th>Route</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for patient in active_patients %}
+            <tr>
+              <td>--</td>
+              <td>{{ patient[2] }} {{ patient[3] }}</td>
+              <td>No medication listed</td>
+              <td>--</td>
+              <td><span class="badge low">Not due</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5">No medication records found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
