@@ -48,7 +48,7 @@ AxonEMR is an educational portfolio project created for learning purposes. It is
 <img width="3757" height="1772" alt="Nursehome" src="https://github.com/user-attachments/assets/47958b57-6ad4-490c-a55d-8337ad722926" />
 <img width="3760" height="1777" alt="Providerhome" src="https://github.com/user-attachments/assets/2491e69a-2da8-4831-97a4-592c722c3ea9" />
 <img width="3736" height="1778" alt="Rxhome" src="https://github.com/user-attachments/assets/9497af45-b157-4ae5-b290-383b0ac3925d" />
-
+<img width="3771" height="1790" alt="labs" src="https://github.com/user-attachments/assets/67b5370e-5fab-490a-97c1-38b4a3664e03" />
 
 
 
