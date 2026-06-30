@@ -122,6 +122,43 @@ class EMRApplication:
                 csrf_token=session.get("csrf_token")
             )
 
+        @self.app.route("/search")
+        @self.login_required
+        def search():
+            query = request.args.get("q", "").strip()
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                SELECT id, chart_number, first_name, last_name, dob
+                FROM patients
+                WHERE first_name LIKE ?
+                OR last_name LIKE ?
+                OR chart_number LIKE ?
+                OR dob LIKE ?
+                ORDER BY last_name, first_name
+                """,
+                (
+                    f"%{query}%",
+                    f"%{query}%",
+                    f"%{query}%",
+                    f"%{query}%",
+                ),
+            )
+
+            results = cursor.fetchall()
+            conn.close()
+
+            self.log_action(f"Searched global search query={query}")
+
+            return render_template(
+                "search_results.html",
+                results=results,
+                query=query,
+            )
+
         @self.app.route("/dashboard")
         @self.login_required
         def dashboard():
@@ -174,15 +211,33 @@ class EMRApplication:
                     recent_activity=recent_activity,
                 )
 
-            conn.close()
+            if role == "pharmacy":
+                conn.close()
+                return render_template(
+                    "pharmacy_dashboard.html",
+                    patient_count=patient_count,
+                    lab_count=lab_count,
+                    active_patients=active_patients,
+                )
 
             if role == "nurse":
+                conn.close()
                 return render_template(
                     "nurse_dashboard.html",
                     patient_count=patient_count,
                     lab_count=lab_count,
                     active_patients=active_patients,
                 )
+            
+            if role == "lab":
+                conn.close()
+                return render_template(
+                    "labs.html",
+                    labs=[],
+                    patient_id="",
+                )
+
+            conn.close()
 
             return render_template(
                 "provider_dashboard.html",
@@ -191,6 +246,8 @@ class EMRApplication:
                 active_patients=active_patients,
             )
 
+
+        
         @self.app.route("/patients")
         @self.login_required
         def patients():
@@ -408,9 +465,11 @@ class EMRApplication:
         
         @self.app.route("/add-lab/<int:patient_id>", methods=["POST"])
         @self.login_required
-        @self.role_required("admin")
         def add_lab(patient_id):
             self.validate_csrf()
+
+            if session.get("role") not in ["admin", "provider", "lab"]:
+                abort(403)
 
             test_name = request.form.get("test_name", "").strip()
             result_value = request.form.get("result_value", "").strip()

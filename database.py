@@ -90,6 +90,8 @@ def init_db():
         ("admin", "Admin123!", "admin"),
         ("nurse", "Nurse123!", "nurse"),
         ("itadmin", "ITadmin123!", "it"),
+        ("pharmacy", "Pharmacy123!", "pharmacy"),
+        ("lab", "Lab123!", "lab"),
     ]
 
     for username, password, role in default_users:

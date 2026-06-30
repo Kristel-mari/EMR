@@ -1,39 +1,202 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Lab Results</title>
+  <title>AxonEMR Laboratory Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #eef2f6; color: #111827; }
+    .shell { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: #7c2d12; color: white; display: flex; flex-direction: column; }
+    .brand { display: flex; gap: 12px; align-items: center; padding: 24px; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .logo { width: 42px; height: 42px; border-radius: 10px; background: #9a3412; display: grid; place-items: center; font-size: 24px; }
+    .brand h2 { margin: 0; font-size: 18px; }
+    .brand p, .role span { margin: 0; color: #fed7aa; font-size: 13px; }
+    .role { margin: 18px; padding: 16px; border-radius: 10px; background: #9a3412; }
+    .role strong { display: block; margin-top: 6px; }
+    nav { padding: 0 14px; display: flex; flex-direction: column; gap: 8px; }
+    nav a, .logout { color: #ffedd5; text-decoration: none; padding: 14px 16px; border-radius: 9px; font-weight: 600; }
+    nav a.active, nav a:hover { background: #c2410c; }
+    .logout { margin-top: auto; border-top: 1px solid rgba(255,255,255,.15); border-radius: 0; padding: 22px 28px; }
+
+    .main { flex: 1; }
+    .topbar { height: 72px; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
+    .search { width: 340px; padding: 13px 16px; border: 0; border-radius: 10px; background: #eef2f6; font-size: 15px; }
+    .topbar form { display: flex; gap: 8px; align-items: center; }
+    .topbar button { padding: 12px 16px; border: 0; border-radius: 10px; background: #7c2d12; color: white; font-weight: 700; cursor: pointer; }
+
+    .user { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; background: #7c2d12; color: white; display: grid; place-items: center; font-weight: bold; }
+    .user p { margin: 2px 0 0; color: #6b7280; }
+
+    .header { background: white; padding: 20px 28px; border-bottom: 1px solid #e5e7eb; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .header p { margin: 6px 0 0; color: #6b7280; }
+
+    .content { padding: 28px; }
+    .alert-banner { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; padding: 18px 22px; border-radius: 14px; margin-bottom: 24px; font-weight: 700; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 24px; }
+    .stat { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .stat span { color: #6b7280; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; }
+    .stat h3 { font-size: 32px; margin: 12px 0 0; }
+    .stat small { color: #6b7280; }
+
+    .panel { background: white; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden; margin-bottom: 24px; }
+    .panel-head { padding: 22px 24px; border-bottom: 1px solid #e5e7eb; }
+    .panel-head h2 { margin: 0; }
+    .panel-head p { margin: 6px 0 0; color: #6b7280; }
+
+    .filter-form { display: flex; gap: 10px; padding: 20px 24px; align-items: center; }
+    .filter-form input { width: 260px; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; }
+    .filter-form button { padding: 12px 16px; border: 0; border-radius: 10px; background: #7c2d12; color: white; font-weight: 700; cursor: pointer; }
+    .filter-form a { color: #7c2d12; font-weight: 700; text-decoration: none; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f3f4f6; color: #6b7280; text-align: left; padding: 14px 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    td { padding: 16px 18px; border-top: 1px solid #e5e7eb; }
+    td small { color: #6b7280; }
+    td a { color: #7c2d12; font-weight: 700; text-decoration: none; }
+
+    .badge { display: inline-block; padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: bold; }
+    .critical { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .normal { background: #dcfce7; color: #047857; border: 1px solid #86efac; }
+
+    @media (max-width: 1000px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .sidebar { width: 220px; }
+    }
+  </style>
 </head>
+
 <body>
-    <h1>Lab Results</h1>
+<div class="shell">
 
-    <form method="GET" action="/labs">
-        <label>Filter by Patient ID</label>
-        <input type="text" name="patient_id" value="{{ patient_id }}">
-        <button type="submit">Search</button>
-        <a href="/labs">Clear</a>
-    </form>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">🧪</div>
+      <div>
+        <h2>AxonEMR</h2>
+        <p>v4.2.1</p>
+      </div>
+    </div>
 
-    <table border="1" cellpadding="6" cellspacing="0">
-        <tr>
+    <div class="role">
+      <span>ROLE</span>
+      <strong>Laboratory</strong>
+    </div>
+
+    <nav>
+      <a class="active" href="/dashboard">Dashboard</a>
+      <a href="/patients">Patients</a>
+      <a href="/labs">Lab Results</a>
+    </nav>
+
+    <a class="logout" href="/logout">Sign Out</a>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      {% include "search_bar.html" %}
+
+      <div class="user">
+        <div class="avatar">LS</div>
+        <div>
+          <strong>{{ session.username }}</strong>
+          <p>Laboratory</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="header">
+      <h1>Laboratory Dashboard</h1>
+      <p>Review lab results, filter by patient, and monitor clinical results.</p>
+    </section>
+
+    <section class="content">
+
+      <div class="alert-banner">
+        ⚡ Critical Value Pending Notification: Review abnormal or critical lab results before provider notification.
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span>Total Lab Results</span>
+          <h3>{{ labs|length }}</h3>
+          <small>All available lab records</small>
+        </div>
+
+        <div class="stat">
+          <span>Filtered Patient</span>
+          <h3>{{ patient_id if patient_id else "All" }}</h3>
+          <small>Current search filter</small>
+        </div>
+
+        <div class="stat">
+          <span>Critical Values</span>
+          <h3>Review</h3>
+          <small>Requires clinical follow-up</small>
+        </div>
+
+        <div class="stat">
+          <span>In Process</span>
+          <h3>14</h3>
+          <small>Pending specimen workflow</small>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Search Lab Results</h2>
+          <p>Filter results by internal patient ID.</p>
+        </div>
+
+        <form method="GET" action="/labs" class="filter-form">
+          <input type="text" name="patient_id" value="{{ patient_id }}" placeholder="Enter Patient ID">
+          <button type="submit">Search</button>
+          <a href="/labs">Clear</a>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Lab Results</h2>
+          <p>Click a patient ID to open the patient profile.</p>
+        </div>
+
+        <table>
+          <tr>
             <th>Lab ID</th>
             <th>Patient ID</th>
             <th>Test Name</th>
             <th>Result</th>
             <th>Unit</th>
             <th>Date</th>
-        </tr>
-        {% for lab in labs %}
-        <tr>
+            <th>Status</th>
+          </tr>
+
+          {% for lab in labs %}
+          <tr>
             <td>{{ lab[0] }}</td>
-            <td>{{ lab[1] }}</td>
+            <td><a href="/patient/{{ lab[1] }}">{{ lab[1] }}</a></td>
             <td>{{ lab[2] }}</td>
             <td>{{ lab[3] }}</td>
             <td>{{ lab[4] }}</td>
             <td>{{ lab[5] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+            <td>
+              <span class="badge normal">Resulted</span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7">No lab results found.</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </section>
 
-    <a href="/dashboard">Back to Dashboard</a>
+    </section>
+  </main>
+
+</div>
 </body>
 </html>
