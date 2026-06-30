@@ -88,9 +88,10 @@
     <a class="logout" href="/logout">↪ Sign Out</a>
   </aside>
 
+ 
   <main class="main">
     <header class="topbar">
-      <input class="search" placeholder="Search patients, orders, MRN...">
+      {% include "search_bar.html" %}
       <div class="user">
         <span>Provider Dashboard</span>
         <div class="avatar">MD</div>

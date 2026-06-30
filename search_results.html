@@ -1,0 +1,25 @@
+<h1>Search Results for "{{ query }}"</h1>
+
+{% if results %}
+<table border="1" cellpadding="6">
+    <tr>
+        <th>MRN</th>
+        <th>Name</th>
+        <th>DOB</th>
+        <th>Open Chart</th>
+    </tr>
+
+    {% for patient in results %}
+    <tr>
+        <td>{{ patient[1] }}</td>
+        <td>{{ patient[2] }} {{ patient[3] }}</td>
+        <td>{{ patient[4] }}</td>
+        <td><a href="/patient/{{ patient[0] }}">Open Patient Profile</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No patients found.</p>
+{% endif %}
+
+<p><a href="/dashboard">Back to Dashboard</a></p>

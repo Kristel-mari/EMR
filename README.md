@@ -25,10 +25,21 @@ To force secure cookies (recommended behind HTTPS):
 export EMR_SECURE_COOKIE=1
 ```
 
-Default login:
-
+MD login:
 - Username: `admin`
 - Password: `Admin123!`
+
+Nurse login:
+- Username: 'nurse'
+- Password: 'Nurse123!'
+
+IT admin login:
+- Username: 'itadmin' 
+- Password: 'ITadmin123!'
+
+Pharmacy login:
+- Username: pharmacy
+- Password: Pharmacy123!
 
 AxonEMR is an educational portfolio project created for learning purposes. It is not affiliated with or endorsed by any existing company or trademark holder.
 

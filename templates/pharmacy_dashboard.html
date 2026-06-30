@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AxonEMR Pharmacy Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #eef2f6; color: #111827; }
+    .shell { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: #4c1d95; color: white; display: flex; flex-direction: column; }
+    .brand { display: flex; gap: 12px; align-items: center; padding: 24px; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .logo { width: 42px; height: 42px; border-radius: 10px; background: #6d28d9; display: grid; place-items: center; font-size: 24px; }
+    .brand h2 { margin: 0; font-size: 18px; }
+    .brand p, .role span { margin: 0; color: #ddd6fe; font-size: 13px; }
+    .role { margin: 18px; padding: 16px; border-radius: 10px; background: #6d28d9; }
+    .role strong { display: block; margin-top: 6px; }
+    nav { padding: 0 14px; display: flex; flex-direction: column; gap: 8px; }
+    nav a, .logout { color: #ede9fe; text-decoration: none; padding: 14px 16px; border-radius: 9px; font-weight: 600; }
+    nav a.active, nav a:hover { background: #7c3aed; }
+    .logout { margin-top: auto; border-top: 1px solid rgba(255,255,255,.15); border-radius: 0; padding: 22px 28px; }
+
+    .main { flex: 1; }
+    .topbar { height: 72px; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
+    .search { width: 340px; padding: 13px 16px; border: 0; border-radius: 10px; background: #eef2f6; font-size: 15px; }
+    .user { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; background: #4c1d95; color: white; display: grid; place-items: center; font-weight: bold; }
+    .user p { margin: 2px 0 0; color: #6b7280; }
+
+    .header { background: white; padding: 20px 28px; border-bottom: 1px solid #e5e7eb; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .content { padding: 28px; }
+
+    .split-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .pharm-panel { background: white; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden; }
+    .panel-head { padding: 22px 24px; border-bottom: 1px solid #e5e7eb; }
+    .panel-head h2 { margin: 0; }
+    .panel-head p { margin: 6px 0 0; color: #6b7280; }
+
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 20px; }
+    .stat { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
+    .stat span { color: #6b7280; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; }
+    .stat h3 { font-size: 28px; margin: 10px 0 0; }
+
+    .worklist { padding: 0 20px 20px; }
+    .item { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: white; }
+    .item strong { display: block; }
+    .item small { color: #6b7280; }
+    .badge { display: inline-block; margin-top: 8px; padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: bold; }
+    .urgent { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .due { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+    .ok { background: #dcfce7; color: #047857; border: 1px solid #86efac; }
+
+    .patients { margin-top: 24px; background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; }
+    .patients h2 { margin: 0; padding: 22px 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f3f4f6; color: #6b7280; text-align: left; padding: 14px 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    td { padding: 16px 18px; border-top: 1px solid #e5e7eb; }
+    td small { color: #6b7280; }
+  </style>
+</head>
+
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">Rx</div>
+      <div>
+        <h2>AxonEMR</h2>
+        <p>v1.0</p>
+      </div>
+    </div>
+
+    <div class="role">
+      <span>ROLE</span>
+      <strong>Pharmacy</strong>
+    </div>
+
+    <nav>
+      <a class="active" href="/dashboard">⌂ Dashboard</a>
+      <a href="#">Inpatient Queue</a>
+      <a href="#">Outpatient Queue</a>
+      <a href="#">Medication Profiles</a>
+      <a href="#">Interventions</a>
+      <a href="#">Inventory</a>
+      <a href="/patients">Patients</a>
+    </nav>
+
+    <a class="logout" href="/logout">↪ Sign Out</a>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      {% include "search_bar.html" %}
+      <div class="user">
+        <span>Pharmacy Dashboard</span>
+        <div class="avatar">Rx</div>
+        <div>
+          <strong>{{ session.username }}</strong>
+          <p>Pharmacy</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="header">
+      <h1>Pharmacy Dashboard</h1>
+    </section>
+
+    <section class="content">
+      <div class="split-grid">
+
+        <div class="pharm-panel">
+          <div class="panel-head">
+            <h2>Inpatient Pharmacy</h2>
+            <p>Hospital orders, verification, IVs, MAR support</p>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><span>Orders to Verify</span><h3>0</h3></div>
+            <div class="stat"><span>STAT Orders</span><h3>0</h3></div>
+            <div class="stat"><span>IV Prep</span><h3>0</h3></div>
+            <div class="stat"><span>Clinical Reviews</span><h3>0</h3></div>
+          </div>
+
+          <div class="worklist">
+            {% for patient in active_patients %}
+            <div class="item">
+              <strong>{{ patient[2] }} {{ patient[3] }}</strong>
+              <small>{{ patient[1] }} · DOB: {{ patient[4] }}</small>
+              <br>
+              <span class="badge due">Medication review pending</span>
+            </div>
+            {% else %}
+            <div class="item">No inpatient pharmacy worklist items.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="pharm-panel">
+          <div class="panel-head">
+            <h2>Outpatient Pharmacy</h2>
+            <p>Prescription processing, refills, rejects, pickup workflow</p>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><span>New Rx Queue</span><h3>0</h3></div>
+            <div class="stat"><span>Refills</span><h3>0</h3></div>
+            <div class="stat"><span>Insurance Rejects</span><h3>0</h3></div>
+            <div class="stat"><span>Ready for Pickup</span><h3>0</h3></div>
+          </div>
+
+          <div class="worklist">
+            {% for patient in active_patients %}
+            <div class="item">
+              <strong>{{ patient[2] }} {{ patient[3] }}</strong>
+              <small>{{ patient[1] }} · DOB: {{ patient[4] }}</small>
+              <br>
+              <span class="badge ok">Profile available</span>
+            </div>
+            {% else %}
+            <div class="item">No outpatient pharmacy worklist items.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+      <div class="patients">
+        <h2>Medication Profile Lookup</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Chart Number</th>
+              <th>Patient</th>
+              <th>DOB</th>
+              <th>Medication Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for patient in active_patients %}
+            <tr>
+              <td>{{ patient[1] }}</td>
+              <td><strong>{{ patient[2] }} {{ patient[3] }}</strong><br><small>Patient ID: {{ patient[0] }}</small></td>
+              <td>{{ patient[4] }}</td>
+              <td><span class="badge ok">Profile Active</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4">No patients found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
