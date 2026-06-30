@@ -25,7 +25,7 @@ To force secure cookies (recommended behind HTTPS):
 export EMR_SECURE_COOKIE=1
 ```
 
-MD login:
+MD/ provider login:
 - Username: `admin`
 - Password: `Admin123!`
 
