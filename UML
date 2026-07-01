@@ -57,3 +57,4 @@ classDiagram
     Patient "1" --> "many" Vital : has
     Patient "1" --> "many" Medication : has
     User "1" --> "many" AuditLog : creates
+```
