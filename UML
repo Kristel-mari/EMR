@@ -1,0 +1,59 @@
+# AxonEMR Class Diagram
+
+```mermaid
+classDiagram
+    class User {
+        int id
+        string username
+        string password_hash
+        string role
+    }
+
+    class Patient {
+        int id
+        string chart_number
+        string first_name
+        string last_name
+        date dob
+        string allergies
+    }
+
+    class LabResult {
+        int id
+        int patient_id
+        string test_name
+        string result_value
+        string result_unit
+        date result_date
+    }
+
+    class Vital {
+        int id
+        int patient_id
+        float height_inches
+        float weight_lbs
+        float bmi
+        date recorded_date
+    }
+
+    class Medication {
+        int id
+        int patient_id
+        string medication_name
+        string dose
+        date start_date
+        date end_date
+        string status
+    }
+
+    class AuditLog {
+        int id
+        int user_id
+        string action
+        datetime timestamp
+    }
+
+    Patient "1" --> "many" LabResult : has
+    Patient "1" --> "many" Vital : has
+    Patient "1" --> "many" Medication : has
+    User "1" --> "many" AuditLog : creates
